@@ -39,6 +39,7 @@
 
 #include <SDL.h>
 #include <SDL_endian.h>
+#include <SDL_ttf.h>
 
 #include "core/api/NstApiEmulator.hpp"
 #include "core/api/NstApiVideo.hpp"
@@ -65,6 +66,7 @@
 #include "cheats.h"
 #include "config.h"
 #include "cursor.h"
+#include "game_select_screen.h"
 
 using namespace Nes::Api;
 using namespace LinuxNst;
@@ -461,6 +463,8 @@ int main(int argc, char *argv[]) {
 	static SDL_Event event;
 	int i;
 	void* userData = (void*) 0xDEADC0DE;
+	SDL_Window* game_window;
+	MODE current_mode = SELECTING_MODE;
 
 	// Set up directories
 	nst_set_dirs();
@@ -488,6 +492,11 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
+	if (TTF_Init() < 0) {
+		fprintf(stderr, "Couldn't initialize SDL-TTF %s\n", TTF_GetError());
+		return 1;
+	}
+
 	// Initialize input and read input config
 	input_init();
 	input_config_read();
@@ -495,8 +504,9 @@ int main(int argc, char *argv[]) {
 	// Set up the video parameters
 	video_set_params();
 	
+	/*
 	// Initialize GTK+
-	/*gtk_init(&argc, &argv);
+	gtk_init(&argc, &argv);
 	
 	if (conf.misc_disable_gui) {
 		// do nothing at this point
@@ -504,10 +514,14 @@ int main(int argc, char *argv[]) {
 	// Don't show a GUI if it has been disabled in the config
 	else {
 		gtkui_init(argc, argv, rendersize.w, rendersize.h);
-	}*/
+	}
+	*/
 
-	// Create the game window
-	video_create();
+    // Create the game window
+    //video_create();
+
+	GameSelectScreen* gs_window = new GameSelectScreen();
+	gs_window->init_game_select_screen();
 	
 	// Set up the callbacks
 	Video::Output::lockCallback.Set(VideoLock, userData);
@@ -524,6 +538,7 @@ int main(int argc, char *argv[]) {
 	fileio_load_db();
 
 	// attempt to load and autostart a file specified on the commandline
+	/*
 	if (argc > 1) {
 		nst_load(argv[argc - 1]);
 
@@ -533,16 +548,114 @@ int main(int argc, char *argv[]) {
 			fprintf(stderr, "Fatal: Could not load ROM\n");
 			exit(1);
 		}
-	}
-	
+	}*/
+
 	nst_quit = 0;
+	char romName[100];
 	
 	while (!nst_quit) {
-		/*while (gtk_events_pending())
+		/*
+		while (gtk_events_pending())
 		{
 			gtk_main_iteration();
-		}*/
+		}
+		*/
+
+	    while (SDL_PollEvent(&event)) {
+	        // A quit is a quit, no matter which mode we're in
+	        if (event.type == SDL_QUIT) {
+	            nst_quit = 1;
+	            schedule_stop = 1;
+	            break;
+	        }
+
+	        switch (current_mode) {
+	        case SELECTING_MODE:
+	            current_mode = gs_window->handle_event(event);
+	            break;
+
+	        case SELECTED_MODE:
+	            snprintf(romName, 100, "../ROMs/%s", gs_window->get_selected_rom());
+	            nst_load(romName);
+	            current_mode = PLAYING_MODE;
+	            delete gs_window;
+	            gs_window = NULL;
+	            video_create();
+	            nst_play();
+	            break;
+
+	        case PLAYING_MODE:
+	            switch (event.type) {
+                case SDL_JOYBUTTONDOWN:
+                case SDL_JOYBUTTONUP:
+                    if (event.jbutton.button == 6) {
+                        // User pressed the back button, so stop the current game
+                        // and bring the selection screen back up
+                        nst_unload();
+                        video_destroy();
+                        gs_window = new GameSelectScreen();
+                        gs_window->init_game_select_screen();
+                        current_mode = SELECTING_MODE;
+                    }
+                    // Fall through intentional
+	            case SDL_KEYDOWN:
+                case SDL_KEYUP:
+                case SDL_JOYHATMOTION:
+                case SDL_JOYAXISMOTION:
+                case SDL_MOUSEBUTTONDOWN:
+                case SDL_MOUSEBUTTONUP:
+                    input_process(cNstPads, event);
+                    break;
+	            }
+	            break;
+
+	        default:
+	            break;
+	        }
+	    }
+
+	    if (current_mode == PLAYING_MODE) {
+	        if (NES_SUCCEEDED(Rewinder(emulator).Enable(true)))
+            {
+                Rewinder(emulator).EnableSound(true);
+            }
+
+            if (timing_check()) {
+                emulator.Execute(cNstVideo, cNstSound, cNstPads);
+                //emulator.Execute(cNstVideo, NULL, cNstPads);
+            }
+
+            if (state_save) {
+                fileio_do_state_save();
+                state_save = 0;
+            }
+
+            if (state_load) {
+                fileio_do_state_load();
+                state_load = 0;
+            }
+
+            if (movie_load) {
+                fileio_do_movie_load();
+                movie_load = 0;
+            }
+
+            if (movie_save) {
+                fileio_do_movie_save();
+                movie_load = 0;
+            }
+
+            if (movie_stop) {
+                movie_stop = 0;
+                fileio_do_movie_stop();
+            }
+
+            if (schedule_stop) {
+                nst_pause();
+            }
+	    }
 		
+	    /*
 		if (playing) {
 			while (SDL_PollEvent(&event))
 			{
@@ -607,7 +720,13 @@ int main(int argc, char *argv[]) {
 		else {
 			//gtk_main_iteration_do(TRUE);
 		}
+		*/
 	}
+
+	if (gs_window) {
+	    delete gs_window;
+	}
+	TTF_Quit();
 
 	nst_unload();
 

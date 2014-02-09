@@ -1,6 +1,8 @@
 #ifndef _VIDEO_H_
 #define _VIDEO_H_
 
+#include <SDL.h>
+
 #define TV_WIDTH 292
 #define OVERSCAN_LEFT 0
 #define OVERSCAN_RIGHT 0
@@ -18,6 +20,7 @@ void opengl_blit();
 
 void video_init();
 void video_create();
+void video_destroy();
 void video_toggle_fullscreen();
 void video_toggle_filter();
 void video_toggle_scalefactor();

@@ -3,6 +3,8 @@
 
 #define VERSION "1.46-WIP"
 
+enum MODE { SELECTING_MODE, SELECTED_MODE, PLAYING_MODE };
+
 void nst_load(const char *filename);
 void nst_play();
 void nst_pause();

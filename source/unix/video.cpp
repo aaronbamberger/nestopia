@@ -339,6 +339,11 @@ void video_create() {
 	SDL_GL_SetSwapInterval(conf.timing_vsync);
 }
 
+void video_destroy() {
+    SDL_GL_DeleteContext(glcontext);
+    SDL_DestroyWindow(sdlwindow);
+}
+
 void video_set_filter() {
 	// Set the filter
 	int scalefactor = conf.video_scale_factor;
