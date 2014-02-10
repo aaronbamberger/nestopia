@@ -41,6 +41,8 @@ private:
 	int m_currentWindowHeight;
 	int m_totalNumGames;
 	char** m_gamesList;
+	uint64_t m_counterFreq;
+	uint64_t m_lastCounts;
 
 	void clear_screen();
 	void draw_header(int window_w, int window_h);

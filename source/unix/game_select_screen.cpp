@@ -12,9 +12,9 @@
 
 extern settings conf;
 
-GameSelectScreen::GameSelectScreen() : m_gamesList(NULL), m_totalNumGames(0), m_currentSelection(0)
+GameSelectScreen::GameSelectScreen() : m_gamesList(NULL), m_totalNumGames(0), m_currentSelection(0), m_counterFreq(0), m_lastCounts(0)
 {
-    uint32_t windowflags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
+    uint32_t windowflags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_FULLSCREEN_DESKTOP;
 
     m_window = SDL_CreateWindow("Game Select Screen",   // window title
                                 SDL_WINDOWPOS_CENTERED,	// initial x position
@@ -39,6 +39,8 @@ GameSelectScreen::GameSelectScreen() : m_gamesList(NULL), m_totalNumGames(0), m_
 
     m_currentWindowWidth = TEMP_WIDTH;
     m_currentWindowHeight = TEMP_HEIGHT;
+
+    m_counterFreq = SDL_GetPerformanceFrequency();
 }
 
 GameSelectScreen::~GameSelectScreen()
@@ -100,7 +102,7 @@ MODE GameSelectScreen::handle_event(SDL_Event& event)
         break;
 
     case SDL_JOYHATMOTION:
-        printf("Received JoyHat Event.  Hat: %d, Value: %d\n", event.jhat.hat, event.jhat.value);
+        printf("Received JoyHat Event. JS: %d,  Hat: %d, Value: %d\n", event.jhat.which, event.jhat.hat, event.jhat.value);
         if (event.jhat.value == SDL_HAT_UP) {
             if (m_currentSelection > 0) {
                 m_currentSelection--;
@@ -123,6 +125,7 @@ MODE GameSelectScreen::handle_event(SDL_Event& event)
 
 void GameSelectScreen::draw_header(int window_w, int window_h)
 {
+    m_lastCounts = SDL_GetPerformanceCounter();
     SDL_Surface* screen = SDL_GetWindowSurface(m_window);
 
     // Draw the header into another surface
@@ -134,10 +137,13 @@ void GameSelectScreen::draw_header(int window_w, int window_h)
     SDL_Rect text_location = {title_x, 20, 0, 0};
     SDL_BlitSurface(text_surface, NULL, screen, &text_location);
     SDL_FreeSurface(text_surface);
+
+    printf("draw_header took %f ms\n", ((double)(SDL_GetPerformanceCounter() - m_lastCounts) / (double)m_counterFreq) * 1000.0);
 }
 
 void GameSelectScreen::draw_choose_list(char** selections, int num_selections, int current_selection)
 {
+    m_lastCounts = SDL_GetPerformanceCounter();
     SDL_Surface* screen = SDL_GetWindowSurface(m_window);
 
     int row_height = TTF_FontLineSkip(m_smallFont);
@@ -160,25 +166,31 @@ void GameSelectScreen::draw_choose_list(char** selections, int num_selections, i
         SDL_BlitSurface(text_surface, NULL, screen, &text_location);
         SDL_FreeSurface(text_surface);
     }
+    printf("draw_choose_list took %f ms\n", ((double)(SDL_GetPerformanceCounter() - m_lastCounts) / (double)m_counterFreq) * 1000.0);
 }
 
 void GameSelectScreen::clear_screen()
 {
+    m_lastCounts = SDL_GetPerformanceCounter();
     SDL_Surface* screen = SDL_GetWindowSurface(m_window);
 
     if (screen) {
         // First, clear the entire screen
         SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 0, 0, 0));
     }
+    printf("clear_screen took %f ms\n", ((double)(SDL_GetPerformanceCounter() - m_lastCounts) / (double)m_counterFreq) * 1000.0);
 }
 
 void GameSelectScreen::update_screen()
 {
+    m_lastCounts = SDL_GetPerformanceCounter();
     SDL_UpdateWindowSurface(m_window);
+    printf("update_screen took %f ms\n", ((double)(SDL_GetPerformanceCounter() - m_lastCounts) / (double)m_counterFreq) * 1000.0);
 }
 
 void GameSelectScreen::populate_games_list()
 {
+    m_lastCounts = SDL_GetPerformanceCounter();
     // First, count the number of ROM files in the directory
     DIR* romDir = opendir("../ROMs/");
     struct dirent* file = readdir(romDir);
@@ -215,6 +227,8 @@ void GameSelectScreen::populate_games_list()
     }
 
     closedir(romDir);
+
+    printf("populate_games_list took %f ms\n", ((double)(SDL_GetPerformanceCounter() - m_lastCounts) / (double)m_counterFreq) * 1000.0);
 }
 
 char* GameSelectScreen::get_selected_rom()

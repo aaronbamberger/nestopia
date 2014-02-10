@@ -596,6 +596,7 @@ int main(int argc, char *argv[]) {
                         gs_window = new GameSelectScreen();
                         gs_window->init_game_select_screen();
                         current_mode = SELECTING_MODE;
+                        break;
                     }
                     // Fall through intentional
 	            case SDL_KEYDOWN:
@@ -653,6 +654,9 @@ int main(int argc, char *argv[]) {
             if (schedule_stop) {
                 nst_pause();
             }
+	    } else {
+	        // So we don't chew up CPU for no reason
+	        SDL_Delay(16);
 	    }
 		
 	    /*
