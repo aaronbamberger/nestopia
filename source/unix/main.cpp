@@ -571,7 +571,11 @@ int main(int argc, char *argv[]) {
 
 	        switch (current_mode) {
 	        case SELECTING_MODE:
+		    if ((event.type == SDL_JOYBUTTONDOWN) && (event.jbutton.button == 4)) {
+	            nst_quit = 1;
+} else {
 	            current_mode = gs_window->handle_event(event);
+}
 	            break;
 
 	        case SELECTED_MODE:
@@ -588,7 +592,7 @@ int main(int argc, char *argv[]) {
 	            switch (event.type) {
                 case SDL_JOYBUTTONDOWN:
                 case SDL_JOYBUTTONUP:
-                    if (event.jbutton.button == 6) {
+                    if (event.jbutton.button == 4) {
                         // User pressed the back button, so stop the current game
                         // and bring the selection screen back up
                         nst_unload();
